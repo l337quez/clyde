@@ -1,4 +1,4 @@
-# clyde
+# GNU  Clyde
 program to configure programs in pacman. GNU Linux ARCH
 
  configure dependency environment library is acronim CLYDE and is ghost of pacman.
