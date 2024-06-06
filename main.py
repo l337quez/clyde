@@ -11,7 +11,9 @@ from PySide6.QtCore import Slot, Qt, QEvent, QTimer
 from project_tab import ProjectTab  # Importar ProjectTab
 from project_info_tab import ProjectInfoTab
 from project_todo_tab import ProjectTodoTab
-from project_about_tab import ProjectAboutTab
+from about_tab import AboutTab
+from setting_tab import SettingTab
+
 
 class GIFLabel(QLabel):
     def __init__(self, gif_path):
@@ -49,11 +51,13 @@ class MainWindow(QMainWindow):
         self.project_tab = ProjectTab(self)  # Instanciar ProjectTab
         self.project_info_tab = ProjectInfoTab(self)
         self.project_todo_tab = ProjectTodoTab(self)
-        self.project_about_tab = ProjectAboutTab(self)
+        self.setting_tab = SettingTab(self)
+        self.about_tab = AboutTab(self)
         self.tabs.addTab(self.project_tab, "Project")
         self.tabs.addTab(self.project_info_tab, "Information")
         self.tabs.addTab(self.project_todo_tab, "Todo")
-        self.tabs.addTab(self.project_about_tab, "About")
+        self.tabs.addTab(self.setting_tab, "Setting")
+        self.tabs.addTab(self.about_tab, "About")
 
         # Crear el sidebar con scroll
         self.project_list_widget = QListWidget()
