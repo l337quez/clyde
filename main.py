@@ -11,9 +11,7 @@ from PySide6.QtCore import Slot, Qt, QEvent, QTimer
 from project_tab import ProjectTab  # Importar ProjectTab
 from project_info_tab import ProjectInfoTab
 from project_todo_tab import ProjectTodoTab
-from about_tab import AboutTab
-from setting_tab import SettingTab
-
+from project_about_tab import ProjectAboutTab
 
 class GIFLabel(QLabel):
     def __init__(self, gif_path):
@@ -38,12 +36,11 @@ class MainWindow(QMainWindow):
         self.current_project_item = None
         self.current_project_info = {}
         self.current_project_tags = []
-        self.db_name = "projects_db"  # Añadir esta línea para definir db_name
 
         # Crear la conexión a MongoDB
         print("Conectando a MongoDB...")
         self.client = MongoClient('localhost', 27017)
-        self.db = self.client[self.db_name]
+        self.db = self.client['projects_db']
         self.create_collections()
 
         # Crear las pestañas
@@ -52,13 +49,11 @@ class MainWindow(QMainWindow):
         self.project_tab = ProjectTab(self)  # Instanciar ProjectTab
         self.project_info_tab = ProjectInfoTab(self)
         self.project_todo_tab = ProjectTodoTab(self)
-        self.setting_tab = SettingTab(self)  # Pasar self (MainWindow) al constructor
-        self.about_tab = AboutTab(self)
+        self.project_about_tab = ProjectAboutTab(self)
         self.tabs.addTab(self.project_tab, "Project")
         self.tabs.addTab(self.project_info_tab, "Information")
         self.tabs.addTab(self.project_todo_tab, "Todo")
-        self.tabs.addTab(self.setting_tab, "Setting")
-        self.tabs.addTab(self.about_tab, "About")
+        self.tabs.addTab(self.project_about_tab, "About")
 
         # Crear el sidebar con scroll
         self.project_list_widget = QListWidget()
