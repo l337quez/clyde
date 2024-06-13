@@ -38,11 +38,12 @@ class MainWindow(QMainWindow):
         self.current_project_item = None
         self.current_project_info = {}
         self.current_project_tags = []
+        self.db_name = "projects_db"  # Añadir esta línea para definir db_name
 
         # Crear la conexión a MongoDB
         print("Conectando a MongoDB...")
         self.client = MongoClient('localhost', 27017)
-        self.db = self.client['projects_db']
+        self.db = self.client[self.db_name]
         self.create_collections()
 
         # Crear las pestañas
@@ -51,7 +52,7 @@ class MainWindow(QMainWindow):
         self.project_tab = ProjectTab(self)  # Instanciar ProjectTab
         self.project_info_tab = ProjectInfoTab(self)
         self.project_todo_tab = ProjectTodoTab(self)
-        self.setting_tab = SettingTab(self)
+        self.setting_tab = SettingTab(self)  # Pasar self (MainWindow) al constructor
         self.about_tab = AboutTab(self)
         self.tabs.addTab(self.project_tab, "Project")
         self.tabs.addTab(self.project_info_tab, "Information")
