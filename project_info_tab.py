@@ -92,7 +92,7 @@ class ProjectInfoTab(QWidget):
 
         # Botón de copiar
         copy_button = QPushButton()
-        copy_button.setIcon(QIcon("icon_copiar.png"))
+        copy_button.setIcon(QIcon("assets/icons/icon_copy.png"))
         copy_button.setMaximumSize(24, 24)
         copy_button.clicked.connect(lambda: self.copy_to_clipboard(value))
         self.additional_info_table.setCellWidget(row_position, 3, copy_button)
