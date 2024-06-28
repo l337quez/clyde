@@ -33,7 +33,7 @@ class LoadThread(QThread):
     def run(self):
         try:
             # Ruta completa al ejecutable mongorestore
-            subprocess.run(['C:\\ruta\\a\\tus\\ejecutables\\mongorestore.exe', '--drop', '--db', self.db_name, self.file_path], check=True)
+            subprocess.run(['C:\\Program Files\\MongoDB\\Server\\7.0\\bin\\mongorestore.exe', '--drop', '--db', self.db_name, self.file_path], check=True)
             self.status_signal.emit(f"Respaldo cargado desde: {self.file_path}")
         except subprocess.CalledProcessError as e:
             self.status_signal.emit(f"Error al cargar el respaldo de la base de datos: {e}")

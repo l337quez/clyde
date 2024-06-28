@@ -40,14 +40,14 @@ class ProjectInfoTab(QWidget):
         self.add_info_button.clicked.connect(self.add_project_info)
         
         self.info_form_layout.addWidget(self.info_name_input)
+        self.info_form_layout.addWidget(self.add_info_button)
         self.info_form_layout.addWidget(self.info_value_input)
         self.info_form_layout.addWidget(self.info_tag_input)
-        self.info_form_layout.addWidget(self.add_info_button)
         self.info_layout.addLayout(self.info_form_layout)
 
         # Tabla para mostrar información adicional
         self.additional_info_table = QTableWidget(0, 4)
-        self.additional_info_table.setHorizontalHeaderLabels(["Key", "Value", "Tags", "Actions"])
+        self.additional_info_table.setHorizontalHeaderLabels(["Key", "Actions","Value", "Tags" ])
         self.additional_info_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.additional_info_table.setAlternatingRowColors(True)
         self.additional_info_table.verticalHeader().setVisible(False)  # Ocultar la numeración de las filas
@@ -73,7 +73,7 @@ class ProjectInfoTab(QWidget):
         self.additional_info_table.insertRow(row_position)
         
         self.additional_info_table.setItem(row_position, 0, QTableWidgetItem(key))
-        self.additional_info_table.setItem(row_position, 1, QTableWidgetItem(value))
+        self.additional_info_table.setItem(row_position, 2, QTableWidgetItem(value))
         
         # Crear un widget para contener los tags
         tags_widget = QWidget()
@@ -88,14 +88,30 @@ class ProjectInfoTab(QWidget):
         
         tags_layout.addStretch()  # Para que no estire el contenido
 
-        self.additional_info_table.setCellWidget(row_position, 2, tags_widget)
+        self.additional_info_table.setCellWidget(row_position, 3, tags_widget)
+
+        # Widget de acciones
+        actions_widget = QWidget()
+        actions_layout = QHBoxLayout()
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(1)
+        actions_widget.setLayout(actions_layout)
 
         # Botón de copiar
         copy_button = QPushButton()
         copy_button.setIcon(QIcon("assets/icons/icon_copy.png"))
         copy_button.setMaximumSize(24, 24)
         copy_button.clicked.connect(lambda: self.copy_to_clipboard(value))
-        self.additional_info_table.setCellWidget(row_position, 3, copy_button)
+        actions_layout.addWidget(copy_button)
+
+        # Botón de eliminar
+        delete_button = QPushButton()
+        delete_button.setIcon(QIcon("assets/icons/delete.png"))
+        delete_button.setMaximumSize(24, 24)
+        delete_button.clicked.connect(lambda: self.delete_row(row_position))
+        actions_layout.addWidget(delete_button)
+
+        self.additional_info_table.setCellWidget(row_position, 1, actions_widget)
 
     @Slot()
     def enable_editing(self):
@@ -168,6 +184,26 @@ class ProjectInfoTab(QWidget):
     def copy_to_clipboard(self, text):
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
+
+
+    @Slot()
+    def delete_row(self, row_position):
+        key_item = self.additional_info_table.item(row_position, 0)
+        if key_item:
+            key = key_item.text()
+            # Elimina la entrada del diccionario del proyecto actual
+            if key in self.main_window.current_project_info:
+                del self.main_window.current_project_info[key]
+            # Actualiza la base de datos
+            projects_collection = self.main_window.db.projects
+            projects_collection.update_one(
+                {"name": self.main_window.current_project_name, "description": self.main_window.current_project_description},
+                {"$set": {
+                    "info": json.dumps(self.main_window.current_project_info)
+                }}
+            )
+            # Elimina la fila de la tabla
+            self.additional_info_table.removeRow(row_position)
 
     @Slot()
     def on_tag_text_edited(self, text):

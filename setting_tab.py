@@ -9,15 +9,11 @@ class SettingTab(QWidget):
         self.main_window = main_window
         self.info_layout = QVBoxLayout()
         
-        # Descripción del proyecto
-        self.project_description_label = QLabel("Agregar respaldo de db y opción de agregar db, se debe eliminar la que está y agregar la nueva")
-        self.info_layout.addWidget(self.project_description_label)
-
         # Layout horizontal para el botón y la etiqueta
         self.theme_layout = QHBoxLayout()
         
         # Botón para cambiar el tema
-        self.theme_button = QPushButton("Cambiar Tema")
+        self.theme_button = QPushButton("Change Theme")
         self.theme_button.clicked.connect(self.toggle_theme)
         self.theme_layout.addWidget(self.theme_button)
 
@@ -59,7 +55,7 @@ class SettingTab(QWidget):
         if self.dark_mode:
             # Cambiar a tema claro
             self.main_window.setStyleSheet("")
-            self.theme_label.setText("Tema Claro")
+            self.theme_label.setText("Light Theme")
         else:
             # Cambiar a tema oscuro
             dark_style_sheet = """
@@ -109,9 +105,17 @@ class SettingTab(QWidget):
             QLineEdit:focus {
                 border: 1px solid #4e4e4e;  /* Borde cuando el campo está enfocado */
             }
+            QTableWidget::item {
+                background-color: #3e3e3e;  /* Fondo gris oscuro para todas las celdas */
+                color: #ffffff;  /* Texto color crema */
+            }
+            QTableWidget::item:alternate {
+                background-color: #2e2e2e;  /* Fondo ligeramente más oscuro para filas alternas */
+                color: #ffffff;  /* Texto color crema */
+            }
             """
             self.main_window.setStyleSheet(dark_style_sheet)
-            self.theme_label.setText("Tema Oscuro")
+            self.theme_label.setText("Dark Theme")
 
         self.dark_mode = not self.dark_mode
 

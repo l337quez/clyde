@@ -133,7 +133,7 @@ class ProjectTab(QWidget):
                 # Crear un nuevo QListWidgetItem
                 new_project_item = QListWidgetItem()
                 new_project_item.setText(f"{project_name}: {project_description[:8] + '...' if len(project_description) > 8 else project_description}")
-                new_project_item.setIcon(QIcon("default_icon.png"))  # Establecer un ícono predeterminado
+                new_project_item.setIcon(QIcon("assets/project_images/default_icon.png"))  # Establecer un ícono predeterminado
 
                 # Añadir el nuevo proyecto al QListWidget de la ventana principal
                 self.main_window.project_list_widget.addItem(new_project_item)
@@ -148,9 +148,9 @@ class ProjectTab(QWidget):
             icon = self.main_window.current_project_item.icon()
             if not icon.isNull():
                 pixmap = icon.pixmap(24, 24)  # Tamaño del icono
-                icon_path = self.main_window.current_project_item.icon_path if hasattr(self.main_window.current_project_item, 'icon_path') else "default_icon.png"
+                icon_path = self.main_window.current_project_item.icon_path if hasattr(self.main_window.current_project_item, 'icon_path') else "assets/project_images/default_icon.png"
             else:
-                icon_path = "default_icon.png"
+                icon_path = "assets/project_images/default_icon.png"
 
             projects_collection.update_one(
                 {"name": self.main_window.current_project_name},
@@ -239,7 +239,7 @@ class ProjectTab(QWidget):
 
         # Botón de copiar
         copy_button = QPushButton()
-        copy_button.setIcon(QIcon("icon_copiar.png"))
+        copy_button.setIcon(QIcon("assets/icons/icon_copy.png"))
         copy_button.setMaximumSize(24, 24)
         copy_button.clicked.connect(lambda: self.copy_to_clipboard(value))
         self.additional_info_table.setCellWidget(row_position, 3, copy_button)

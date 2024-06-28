@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
         for project in projects:
             description = project['description'] if len(project['description']) <= 8 else project['description'][:8] + "..."
             item = QListWidgetItem(f"{project['name']}: {description}")
-            icon_path = project.get('icon_path', "default_icon.png")
+            icon_path = project.get('icon_path', "assets/project_images/default_icon.png")
             
             if icon_path.endswith('.gif'):
                 gif_label = GIFLabel(icon_path)
@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
             self.project_tab.update_project_form(project_name, project_description)  # Llamar al método para actualizar el formulario
 
             # Actualizar el icono si está disponible
-            icon_path = project.get('icon_path', "default_icon.png")
+            icon_path = project.get('icon_path', "assets/project_images/default_icon.png")
             if ('.gif' in icon_path):
                 gif_label = GIFLabel(icon_path)
                 icon = QIcon(gif_label.currentPixmap())
