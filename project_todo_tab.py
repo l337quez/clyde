@@ -1,12 +1,12 @@
 import sys
-import json
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QCheckBox, QScrollArea, QListWidget, QListWidgetItem, QDialog, QDialogButtonBox)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QCheckBox, QScrollArea, QDialog, QDialogButtonBox)
 from PySide6.QtCore import Slot, Qt
 
 class ProjectTodoTab(QWidget):
-    def __init__(self, main_window):
+    def __init__(self, main_window, project_id):
         super().__init__()
         self.main_window = main_window
+        self.project_id = project_id
         self.layout = QVBoxLayout(self)
 
         # Botón para añadir nueva tarea
@@ -29,10 +29,14 @@ class ProjectTodoTab(QWidget):
 
     def load_todos(self):
         todos_collection = self.main_window.db.todos
-        todos = todos_collection.find()
+        todos = todos_collection.find({"project_id": self.project_id})
         for todo in todos:
-            title, description, tasks = todo['title'], todo['description'], json.loads(todo['tasks'])
+            title, description, tasks = todo['title'], todo['description'], todo['tasks']
             self.add_todo_item(title, description, tasks, False)
+
+    def update_project_id(self, project_id):
+        self.project_id = project_id
+        self.load_todos()
 
     def add_todo_item(self, title, description, tasks, new):
         todo_widget = QWidget()
@@ -104,7 +108,8 @@ class ProjectTodoTab(QWidget):
         todos_collection.insert_one({
             "title": title,
             "description": description,
-            "tasks": json.dumps(tasks)
+            "tasks": tasks,
+            "project_id": self.project_id
         })
 
     @Slot()
@@ -155,10 +160,11 @@ class ProjectTodoTab(QWidget):
             todos.append((title, description, tasks))
         
         todos_collection = self.main_window.db.todos
-        todos_collection.delete_many({})
+        todos_collection.delete_many({"project_id": self.project_id})
         for todo in todos:
             todos_collection.insert_one({
                 "title": todo[0],
                 "description": todo[1],
-                "tasks": json.dumps(todo[2])
+                "tasks": todo[2],
+                "project_id": self.project_id
             })

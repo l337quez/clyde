@@ -1,6 +1,5 @@
 import sys
 import os
-import json
 from pymongo import MongoClient
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTabWidget, 
                                QWidget, QVBoxLayout, QSystemTrayIcon, 
@@ -13,7 +12,12 @@ from project_info_tab import ProjectInfoTab
 from project_todo_tab import ProjectTodoTab
 from about_tab import AboutTab
 from setting_tab import SettingTab
+from icon import icon  # Importar los datos del icono desde icon.py
 
+# Establecer explícitamente el ID de modelo de usuario de aplicación en Windows
+if sys.platform.startswith('win'):
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'CompanyName.ProductName.SubProduct.VersionInformation')
 
 class GIFLabel(QLabel):
     def __init__(self, gif_path):
@@ -26,18 +30,38 @@ class GIFLabel(QLabel):
         return self.movie.currentPixmap()
 
 class MainWindow(QMainWindow):
-    def __init__(self, icon_path):
+    def __init__(self):
         super().__init__()
         self.setWindowTitle("GNU Clyde")
         self.setGeometry(300, 300, 800, 600)
-        self.setWindowIcon(QIcon(icon_path))
+
+        # Cargar el icono desde los datos hexadecimales
+        qp = QPixmap()
+        qp.loadFromData(icon)
+        appIcon = QIcon(qp)
+        self.setWindowIcon(appIcon)
+
+        # Crear el sistema de bandeja con el ícono
+        self.tray_icon = QSystemTrayIcon(appIcon, parent=self)
+        self.tray_icon.setToolTip("GNU Clyde")
+        tray_menu = QMenu()
+        show_action = QAction("Mostrar", self)
+        quit_action = QAction("Salir", self)
+        tray_menu.addAction(show_action)
+        tray_menu.addAction(quit_action)
+        self.tray_icon.setContextMenu(tray_menu)
+        
+        show_action.triggered.connect(self.show)
+        quit_action.triggered.connect(QApplication.quit)
+
+        self.tray_icon.show()
 
         # Inicializar atributos para proyecto actual
         self.current_project_name = ""
         self.current_project_description = ""
         self.current_project_item = None
         self.current_project_info = {}
-        self.current_project_tags = []
+        self.current_project_id = "default_project_id"
         self.db_name = "projects_db"  # Añadir esta línea para definir db_name
 
         # Crear la conexión a MongoDB
@@ -51,7 +75,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.tabs)
         self.project_tab = ProjectTab(self)  # Instanciar ProjectTab
         self.project_info_tab = ProjectInfoTab(self)
-        self.project_todo_tab = ProjectTodoTab(self)
+        self.project_todo_tab = ProjectTodoTab(self, project_id=self.current_project_id or "default_project_id")
         self.setting_tab = SettingTab(self)  # Pasar self (MainWindow) al constructor
         self.about_tab = AboutTab(self)
         self.tabs.addTab(self.project_tab, "Project")
@@ -82,21 +106,6 @@ class MainWindow(QMainWindow):
         dock_widget.setWidget(sidebar_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
 
-        # Crear el sistema de bandeja
-        self.tray_icon = QSystemTrayIcon(QIcon(icon_path), parent=self)
-        self.tray_icon.setToolTip("GNU Clyde")
-        tray_menu = QMenu()
-        show_action = QAction("Mostrar", self)
-        quit_action = QAction("Salir", self)
-        tray_menu.addAction(show_action)
-        tray_menu.addAction(quit_action)
-        self.tray_icon.setContextMenu(tray_menu)
-        
-        show_action.triggered.connect(self.show)
-        quit_action.triggered.connect(QApplication.quit)
-
-        self.tray_icon.show()
-
         # Cargar proyectos existentes desde la base de datos
         self.load_projects()
 
@@ -124,7 +133,6 @@ class MainWindow(QMainWindow):
         self.project_tab.description_input.clear()
         self.tabs.setCurrentWidget(self.project_tab)
 
-
     def load_projects(self):
         self.gif_labels = []
         projects_collection = self.db.projects
@@ -142,7 +150,6 @@ class MainWindow(QMainWindow):
                 item.setIcon(QIcon(icon_path))
             item.icon_path = icon_path  # Guardar la ruta del icono en el item
             self.project_list_widget.addItem(item)
-
 
     def update_gif_icons(self):
         for item, gif_label in self.gif_labels:
@@ -164,9 +171,9 @@ class MainWindow(QMainWindow):
             self.current_project_item = item
             self.current_project_name = project_name
             self.current_project_description = project_description
-            self.current_project_info = json.loads(project.get('info', '{}'))
-            self.current_project_tags = project.get('tags', [])
-            self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info, self.current_project_tags)
+            self.current_project_info = project.get('info', '{}')
+            self.current_project_id = project['_id']
+            self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info)
             self.project_tab.update_project_form(project_name, project_description)  # Llamar al método para actualizar el formulario
 
             # Actualizar el icono si está disponible
@@ -177,20 +184,25 @@ class MainWindow(QMainWindow):
             else:
                 icon = QIcon(icon_path)
             self.current_project_item.setIcon(icon)
+
+            # Actualizar el project_id en ProjectTodoTab
+            self.project_todo_tab.project_id = self.current_project_id
+            self.project_todo_tab.load_todos()
+
         else:
             self.current_project_item = item
             self.current_project_name = project_name
             self.current_project_description = project_description
             self.current_project_info = {}
-            self.current_project_tags = []
-            self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info, self.current_project_tags)
+            self.current_project_id = None
+            self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info)
             self.project_tab.update_project_form(project_name, project_description)  # Llamar al método para actualizar el formulario
 
         # Limpiar la búsqueda al cambiar de ítem
         self.project_info_tab.clear_search()
 
         self.project_tab.enable_editing()
-        self.tabs.setCurrentWidget(self.project_tab)
+        self.tabs.setCurrentWidget(self.project_info_tab)
 
     @Slot()
     def update_project_icon(self, project_name, icon_path):
@@ -204,8 +216,6 @@ class MainWindow(QMainWindow):
                 else:
                     item.setIcon(QIcon(icon_path))
                 break
-
-
 
     @Slot()
     def closeEvent(self, event):
@@ -225,26 +235,12 @@ class MainWindow(QMainWindow):
 
     def minimize_to_tray(self):
         self.hide()
-        self.tray_icon.showMessage(
-            "Minimizado",
-            "La aplicación se ha minimizado a la bandeja del sistema",
-            QSystemTrayIcon.Information,
-            2000
-        )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    # Ruta del icono
-    icon_path = os.path.abspath("assets/app/clyde.ico")
-
-    print(f"Using icon at: {icon_path}")  # Debug line to confirm icon path
-    my_pixmap = QPixmap(f":/{icon_path}")
-    my_icon = QIcon(my_pixmap)
-    app.setWindowIcon(QIcon(icon_path))  # Asegúrate de que este archivo esté en el mismo directorio que tu script
-
     print("Creando ventana principal...")
-    window = MainWindow(icon_path)
+    window = MainWindow()
 
     print("Mostrando ventana principal...")
     window.show()
