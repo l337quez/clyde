@@ -2,6 +2,9 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxL
 from PySide6.QtCore import Slot, QTimer
 from pacmanprogress import Pacman
 from backup_restore_threads import BackupThread, LoadThread
+import os
+import json
+import sys
 
 class SettingTab(QWidget):
     def __init__(self, main_window):
@@ -18,7 +21,7 @@ class SettingTab(QWidget):
         self.theme_layout.addWidget(self.theme_button)
 
         # Etiqueta para indicar el estado del tema
-        self.theme_label = QLabel("Tema Claro")
+        self.theme_label = QLabel("Light Theme")
         self.theme_layout.addWidget(self.theme_label)
         
         # Añadir el layout horizontal al layout principal
@@ -48,7 +51,40 @@ class SettingTab(QWidget):
         self.info_layout.addWidget(self.status_text)
 
         self.setLayout(self.info_layout)
-        self.dark_mode = False  # Estado inicial del tema
+
+        # Cargar el tema desde el archivo de configuración
+        config = self.load_config()
+        if config.get("theme") == "dark":
+            self.dark_mode = True
+            self.toggle_theme()
+        else:
+            self.dark_mode = False
+
+    def get_config_path(self):
+        config_dir = os.path.join(os.path.expanduser("~"), ".myapp")
+        os.makedirs(config_dir, exist_ok=True)
+        return os.path.join(config_dir, "config.json")
+
+    def save_config(self, config_data):
+        config_path = self.get_config_path()
+        with open(config_path, "w") as config_file:
+            json.dump(config_data, config_file)
+
+    def load_config(self):
+        config_path = self.get_config_path()
+        if os.path.exists(config_path):
+            with open(config_path, "r") as config_file:
+                return json.load(config_file)
+        return {}
+
+    def get_qss_path(self):
+        if getattr(sys, 'frozen', False):
+            # Estamos empaquetados con PyInstaller
+            base_path = sys._MEIPASS
+        else:
+            # Estamos en modo de desarrollo
+            base_path = os.path.dirname(__file__)
+        return os.path.join(base_path, "dark_theme.qss")
 
     @Slot()
     def toggle_theme(self):
@@ -56,67 +92,16 @@ class SettingTab(QWidget):
             # Cambiar a tema claro
             self.main_window.setStyleSheet("")
             self.theme_label.setText("Light Theme")
+            config = {"theme": "light"}
         else:
             # Cambiar a tema oscuro
-            dark_style_sheet = """
-            QWidget {
-                background-color: #1e1e1e;
-                color: #ffffff;
-            }
-            QTabBar::tab {
-                background-color: #3e3e3e;
-                color: #ffffff;
-                padding: 10px;
-            }
-            QTabBar::tab:selected {
-                background-color: #5e5e5e;
-            }
-            QPushButton {
-                background-color: #3e3e3e;
-                color: #ffffff;
-                border: 1px solid #ffffff;
-                border-radius: 5px;
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #4e4e4e;
-            }
-            QTableWidget {
-                background-color: #3e3e3e;
-                color: #ffffff;
-                gridline-color: #5e5e5e;
-                border: 1px solid #5e5e5e;
-            }
-            QHeaderView::section {
-                background-color: #3e3e3e;
-                color: #ffffff;
-                border: 1px solid #5e5e5e;
-            }
-            QTabWidget::pane {
-                border: 2px solid #2e2e2e;  /* Cambiar el color de borde del área de la pestaña */
-            }
-            QLineEdit {
-                background-color: #3e3e3e;  /* Fondo del campo de entrada */
-                color: #ffffff;  /* Color del texto */
-                border: 1px solid #5e5e5e;  /* Borde del campo de entrada */
-                border-radius: 3px;  /* Opcional: bordes redondeados */
-                padding: 5px;  /* Opcional: espacio interno */
-            }
-            QLineEdit:focus {
-                border: 1px solid #4e4e4e;  /* Borde cuando el campo está enfocado */
-            }
-            QTableWidget::item {
-                background-color: #3e3e3e;  /* Fondo gris oscuro para todas las celdas */
-                color: #ffffff;  /* Texto color crema */
-            }
-            QTableWidget::item:alternate {
-                background-color: #2e2e2e;  /* Fondo ligeramente más oscuro para filas alternas */
-                color: #ffffff;  /* Texto color crema */
-            }
-            """
-            self.main_window.setStyleSheet(dark_style_sheet)
+            qss_file = self.get_qss_path()
+            with open(qss_file, "r") as file:
+                self.main_window.setStyleSheet(file.read())
             self.theme_label.setText("Dark Theme")
+            config = {"theme": "dark"}
 
+        self.save_config(config)
         self.dark_mode = not self.dark_mode
 
     @Slot()

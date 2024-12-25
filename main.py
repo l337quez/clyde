@@ -13,6 +13,8 @@ from project_todo_tab import ProjectTodoTab
 from about_tab import AboutTab
 from setting_tab import SettingTab
 from icon import icon  # Importar los datos del icono desde icon.py
+from PySide6.QtWidgets import QSizePolicy
+import json
 
 # Establecer explícitamente el ID de modelo de usuario de aplicación en Windows
 if sys.platform.startswith('win'):
@@ -35,11 +37,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("GNU Clyde")
         self.setGeometry(300, 300, 800, 600)
 
+        self.config_path = 'config.json'
+        
+        # Cargar la configuración y aplicar el tema antes de inicializar setting_tab
+        self.config = {}
+        self.load_config()
+
         # Cargar el icono desde los datos hexadecimales
         qp = QPixmap()
         qp.loadFromData(icon)
         appIcon = QIcon(qp)
         self.setWindowIcon(appIcon)
+
 
         # Crear el sistema de bandeja con el ícono
         self.tray_icon = QSystemTrayIcon(appIcon, parent=self)
@@ -66,7 +75,8 @@ class MainWindow(QMainWindow):
 
         # Crear la conexión a MongoDB
         print("Conectando a MongoDB...")
-        self.client = MongoClient('localhost', 27017)
+        #self.client = MongoClient('localhost', 27017)
+        self.client = MongoClient('mongodb://admin:mongo@localhost:27017/')
         self.db = self.client[self.db_name]
         self.create_collections()
 
@@ -102,8 +112,9 @@ class MainWindow(QMainWindow):
         sidebar_widget.setLayout(sidebar_layout)
 
         # Crear QDockWidget para el sidebar
-        dock_widget = QDockWidget("Proyectos", self)
+        dock_widget = QDockWidget("Projects", self)
         dock_widget.setWidget(sidebar_widget)
+        dock_widget.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
 
         # Cargar proyectos existentes desde la base de datos
@@ -114,6 +125,44 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.update_gif_icons)
         self.timer.start(100)  # Actualizar cada 100 ms
 
+        # Restaurar la posición del sidebar si existe en config
+        dock_position = self.config.get("sidebar_position", Qt.LeftDockWidgetArea)
+        self.addDockWidget(dock_position, dock_widget)
+
+        dock_widget.dockLocationChanged.connect(self.save_sidebar_position)
+        self.dock_widget.dockLocationChanged.connect(self.save_sidebar_position)
+
+    def save_sidebar_position(self):
+            """Guardar la posición del sidebar en el archivo config.json"""
+            position = self.dockWidgetArea(dock_widget)
+            self.config["sidebar_position"] = position
+
+            with open(self.config_path, 'w') as f:
+                json.dump(self.config, f, indent=4)
+
+    def load_config(self):
+        if os.path.exists(self.config_path):
+            with open(self.config_path, 'r') as f:
+                self.config = json.load(f)
+               
+            # Llamar a apply_theme con el valor de dark_mode desde la configuración
+            dark_mode = self.config.get("dark_mode", False)
+            self.apply_theme(dark_mode)
+
+    def apply_theme(self, dark_mode):
+        if dark_mode:
+            # Cargar el tema oscuro desde el archivo .qss
+            with open("dark_theme.qss", "r") as f:
+                dark_style_sheet = f.read()
+            self.setStyleSheet(dark_style_sheet)
+            #self.setting_tab.theme_label.setText("Dark Theme")
+            #self.setting_tab.dark_mode = True
+        else:
+            # Usar el tema claro por defecto
+            self.setStyleSheet("")
+            #self.setting_tab.theme_label.setText("Light Theme")
+            #self.setting_tab.dark_mode = False
+
     def create_collections(self):
         # Crear colecciones si no existen
         if 'projects' not in self.db.list_collection_names():
@@ -122,7 +171,13 @@ class MainWindow(QMainWindow):
             self.db.create_collection('todos')
 
     def add_create_project_button(self):
-        create_project_button = QPushButton("Crear Proyecto")
+        create_project_button = QPushButton("Create Project")
+        create_project_button.setStyleSheet("padding: 4px; margin: 8px;")
+
+        # Hacer que el botón se ajuste al tamaño del texto
+        size_policy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        create_project_button.setSizePolicy(size_policy)
+
         create_project_button.clicked.connect(self.show_create_project_form)
         create_project_item = QListWidgetItem(self.project_list_widget)
         create_project_item.setSizeHint(create_project_button.sizeHint()) 

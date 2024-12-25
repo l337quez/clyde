@@ -7,3 +7,10 @@ python manage.py migrate app_name zero
 ver las migraciones ejecutadas de una aplicacion
 
 python manage.py showmigrations app_name
+
+
+
+*****************************
+generar una migracion en blanco
+
+python manage.py makemigrations --empty app_name
