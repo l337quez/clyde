@@ -32,7 +32,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='GNU Clyde',
+    name='GNU Mau',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,7 +40,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon='assets/app/clyde.ico'
+    icon='assets/app/mau.ico'
 )
 
 coll = COLLECT(
@@ -51,7 +51,7 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='GNU Clyde',
+    name='GNU Mau',
 )
 
 # Ajustar para empaquetar en un solo archivo
@@ -60,7 +60,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='GNU Clyde',
+    name='GNU Mau',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -68,6 +68,6 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon='assets/app/clyde.ico',
+    icon='assets/app/mau.ico',
     onefile=True  # Esta es la configuración adicional para empaquetar en un solo archivo
 )

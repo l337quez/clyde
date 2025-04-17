@@ -15,6 +15,10 @@ from setting_tab import SettingTab
 from icon import icon  # Importar los datos del icono desde icon.py
 from PySide6.QtWidgets import QSizePolicy
 import json
+from dotenv import load_dotenv
+
+# load env file
+load_dotenv()
 
 # Establecer explícitamente el ID de modelo de usuario de aplicación en Windows
 if sys.platform.startswith('win'):
@@ -34,7 +38,7 @@ class GIFLabel(QLabel):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("GNU Clyde")
+        self.setWindowTitle("GNU Mau")
         self.setGeometry(300, 300, 800, 600)
 
         self.config_path = 'config.json'
@@ -52,7 +56,7 @@ class MainWindow(QMainWindow):
 
         # Crear el sistema de bandeja con el ícono
         self.tray_icon = QSystemTrayIcon(appIcon, parent=self)
-        self.tray_icon.setToolTip("GNU Clyde")
+        self.tray_icon.setToolTip("GNU Mau")
         tray_menu = QMenu()
         show_action = QAction("Mostrar", self)
         quit_action = QAction("Salir", self)
@@ -65,19 +69,28 @@ class MainWindow(QMainWindow):
 
         self.tray_icon.show()
 
-        # Inicializar atributos para proyecto actual
         self.current_project_name = ""
         self.current_project_description = ""
         self.current_project_item = None
         self.current_project_info = {}
         self.current_project_id = "default_project_id"
-        self.db_name = "projects_db"  # Añadir esta línea para definir db_name
+        self.db_name = "projects_db" 
 
-        # Crear la conexión a MongoDB
+        mongo_user = os.getenv('MONGO_USER', 'admin')
+        mongo_pass = os.getenv('MONGO_PASS', 'mongo')
+        mongo_host = os.getenv('MONGO_HOST', 'localhost')
+        mongo_port = os.getenv('MONGO_PORT', '27017')
+        db_name = os.getenv('DB_NAME', 'projects_db')
+        mongo_uri = f"mongodb://{mongo_user}:{mongo_pass}@{mongo_host}:{mongo_port}/"
+        print("Conectando a MongoDB con:", mongo_uri)
+
+        self.client = MongoClient(mongo_uri)
+        self.db = self.client[db_name]
+
         print("Conectando a MongoDB...")
         #self.client = MongoClient('localhost', 27017)
-        self.client = MongoClient('mongodb://admin:mongo@localhost:27017/')
-        self.db = self.client[self.db_name]
+        # self.client = MongoClient('mongodb://admin:mongo@localhost:27017/')
+        # self.db = self.client[self.db_name]
         self.create_collections()
 
         # Crear las pestañas
@@ -112,10 +125,10 @@ class MainWindow(QMainWindow):
         sidebar_widget.setLayout(sidebar_layout)
 
         # Crear QDockWidget para el sidebar
-        dock_widget = QDockWidget("Projects", self)
-        dock_widget.setWidget(sidebar_widget)
-        dock_widget.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+        self.dock_widget = QDockWidget("Projects", self)
+        self.dock_widget.setWidget(sidebar_widget)
+        self.dock_widget.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widget)
 
         # Cargar proyectos existentes desde la base de datos
         self.load_projects()
@@ -126,19 +139,30 @@ class MainWindow(QMainWindow):
         self.timer.start(100)  # Actualizar cada 100 ms
 
         # Restaurar la posición del sidebar si existe en config
-        dock_position = self.config.get("sidebar_position", Qt.LeftDockWidgetArea)
-        self.addDockWidget(dock_position, dock_widget)
+        # dock_position = self.config.get("sidebar_position", Qt.LeftDockWidgetArea)
+        # self.addDockWidget(dock_position, self.dock_widget)
 
-        dock_widget.dockLocationChanged.connect(self.save_sidebar_position)
+
+
+        dock_position_int = self.config.get("sidebar_position", Qt.LeftDockWidgetArea.value)
+        dock_position = Qt.DockWidgetArea(dock_position_int)
+        self.addDockWidget(dock_position, self.dock_widget)
+
+
+
+
+        self.dock_widget.dockLocationChanged.connect(self.save_sidebar_position)
         self.dock_widget.dockLocationChanged.connect(self.save_sidebar_position)
 
     def save_sidebar_position(self):
-            """Guardar la posición del sidebar en el archivo config.json"""
-            position = self.dockWidgetArea(dock_widget)
-            self.config["sidebar_position"] = position
+        """Guardar la posición del sidebar en el archivo config.json"""
+        position = self.dockWidgetArea(self.dock_widget)
+        self.config["sidebar_position"] = int(position) 
+            # self.config["sidebar_position"] = position
 
-            with open(self.config_path, 'w') as f:
-                json.dump(self.config, f, indent=4)
+
+        with open(self.config_path, 'w') as f:
+            json.dump(self.config, f, indent=4)
 
     def load_config(self):
         if os.path.exists(self.config_path):
@@ -184,6 +208,10 @@ class MainWindow(QMainWindow):
         self.project_list_widget.setItemWidget(create_project_item, create_project_button)
 
     def show_create_project_form(self):
+        self.current_project_item = None
+        self.current_project_name = ""
+        self.current_project_description = ""
+        self.current_project_info = {}
         self.project_tab.name_input.clear()
         self.project_tab.description_input.clear()
         self.tabs.setCurrentWidget(self.project_tab)
@@ -195,6 +223,7 @@ class MainWindow(QMainWindow):
         for project in projects:
             description = project['description'] if len(project['description']) <= 8 else project['description'][:8] + "..."
             item = QListWidgetItem(f"{project['name']}: {description}")
+            item.setData(Qt.UserRole, project["_id"])
             icon_path = project.get('icon_path', "assets/project_images/default_icon.png")
             
             if icon_path.endswith('.gif'):
@@ -212,24 +241,50 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def display_project_info(self, item):
-        text = item.text()
-        if text.startswith("Crear Proyecto"):
-            self.show_create_project_form()
+        # text = item.text()
+        # if text.startswith("Crear Proyecto"):
+        #     self.show_create_project_form()
+        #     return
+
+        # project_name, project_description = text.split(": ", 1)
+
+        # projects_collection = self.db.projects
+        # project = projects_collection.find_one({"name": project_name, "description": project_description})
+
+        project_id = item.data(Qt.UserRole)
+        project = self.db.projects.find_one({"_id": project_id})
+        if not project:
+            # Si no encuentra nada, "project" es None
+            # Aquí debes decidir qué hacer. Por ejemplo:
+            print("No se encontró ningún documento con ese _id:", project_id)
             return
-
-        project_name, project_description = text.split(": ", 1)
-
-        projects_collection = self.db.projects
-        project = projects_collection.find_one({"name": project_name, "description": project_description})
-
+          
         if project:
+
             self.current_project_item = item
-            self.current_project_name = project_name
-            self.current_project_description = project_description
-            self.current_project_info = project.get('info', '{}')
-            self.current_project_id = project['_id']
-            self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info)
-            self.project_tab.update_project_form(project_name, project_description)  # Llamar al método para actualizar el formulario
+            self.current_project_id = project_id
+            self.current_project_name = project["name"]
+            self.current_project_description = project["description"]
+            self.current_project_info = project.get("info", {})
+
+            self.project_info_tab.update_project_info(
+            self.current_project_name,
+            self.current_project_description,
+            self.current_project_info
+            )
+            self.project_tab.update_project_form(
+                self.current_project_name,
+                self.current_project_description
+            )
+
+
+            # self.current_project_item = item
+            # self.current_project_name = project_name
+            # self.current_project_description = project_description
+            # self.current_project_info = project.get('info', '{}')
+            # self.current_project_id = project['_id']
+            # self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info)
+            # self.project_tab.update_project_form(project_name, project_description)  # Llamar al método para actualizar el formulario
 
             # Actualizar el icono si está disponible
             icon_path = project.get('icon_path', "assets/project_images/default_icon.png")
@@ -246,12 +301,15 @@ class MainWindow(QMainWindow):
 
         else:
             self.current_project_item = item
-            self.current_project_name = project_name
-            self.current_project_description = project_description
+            self.project_name = project["name"]
+            self.project_description = project["description"]
+
+            # self.current_project_name = project_name
+            # self.current_project_description = project_description
             self.current_project_info = {}
             self.current_project_id = None
-            self.project_info_tab.update_project_info(project_name, project_description, self.current_project_info)
-            self.project_tab.update_project_form(project_name, project_description)  # Llamar al método para actualizar el formulario
+            self.project_info_tab.update_project_info(self.project_name, self.project_description, self.current_project_info)
+            self.project_tab.update_project_form(self.project_name, self.project_description)  # Llamar al método para actualizar el formulario
 
         # Limpiar la búsqueda al cambiar de ítem
         self.project_info_tab.clear_search()

@@ -32,7 +32,7 @@ class GIFLabel(QLabel):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("GNU Clyde")
+        self.setWindowTitle("GNU Mau")
         self.setGeometry(300, 300, 800, 600)
 
         # Cargar el icono desde los datos hexadecimales
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
 
         # Crear el sistema de bandeja con el ícono
         self.tray_icon = QSystemTrayIcon(appIcon, parent=self)
-        self.tray_icon.setToolTip("GNU Clyde")
+        self.tray_icon.setToolTip("GNU Mau")
         tray_menu = QMenu()
         show_action = QAction("Mostrar", self)
         quit_action = QAction("Salir", self)

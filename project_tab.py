@@ -78,7 +78,7 @@ class ProjectTab(QWidget):
 
     @Slot()
     def change_icon(self):
-        icon_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Icono", "", "Imágenes (*.gif *.png *.ico)")
+        icon_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Icono", "", "Imágenes (*.gif *.png *.ico *.webp)")
         if icon_path:
             self.main_window.update_project_icon(self.main_window.current_project_name, icon_path)
             projects_collection = self.main_window.db.projects
@@ -87,18 +87,6 @@ class ProjectTab(QWidget):
                 {"$set": {"icon_path": icon_path}}
             )
             self.main_window.current_project_item.icon_path = icon_path 
-
-    @Slot()
-    def enable_editing(self):
-        self.name_input.setReadOnly(False)
-        self.description_input.setReadOnly(False)
-        self.set_editing_enabled(True)
-
-    def set_editing_enabled(self, enabled):
-        self.info_name_input.setVisible(enabled)
-        self.info_value_input.setVisible(enabled)
-        self.add_info_button.setVisible(enabled)
-        self.edit_button.setEnabled(not enabled)  # Deshabilitar el botón de editar mientras está en modo de edición
 
     @Slot()
     def save_project(self):
@@ -161,12 +149,18 @@ class ProjectTab(QWidget):
             self.add_info_item(name, value)
 
             projects_collection = self.main_window.db.projects
+            # projects_collection.update_one(
+            #     {"name": self.main_window.current_project_name, "description": self.main_window.current_project_description},
+            #     {"$set": {
+            #         "info": self.main_window.current_project_info  # Guardar como cadena JSON
+            #     }}
+            # )
             projects_collection.update_one(
-                {"name": self.main_window.current_project_name, "description": self.main_window.current_project_description},
-                {"$set": {
-                    "info": self.main_window.current_project_info  # Guardar como cadena JSON
-                }}
-            )
+            {"_id": self.main_window.current_project_id},
+            {"$set": {
+                "info": self.main_window.current_project_info
+            }}
+        )
 
             self.info_name_input.clear()
             self.info_value_input.clear()

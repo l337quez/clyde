@@ -159,7 +159,7 @@ class ProjectInfoTab(QWidget):
 
     @Slot()
     def change_icon(self):
-        icon_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Icono", "", "Imágenes PNG (*.png);;Imágenes GIF (*.gif)")
+        icon_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Icono", "", "Imágenes PNG (*.png);;Imágenes GIF (*.gif);;Imágenes WebP (*.webp)")
         if icon_path:
             self.main_window.current_project_item.setIcon(QIcon(icon_path))
             projects_collection = self.main_window.db.projects
