@@ -16,7 +16,7 @@ class AboutTab(QWidget):
         self.version_label.setContentsMargins(10, 10, 0, 0)
         self.info_layout.addWidget(self.version_label)
 
-        self.version_label = QLabel("<b>version:</b> v0.0.4 Alpha")
+        self.version_label = QLabel("<b>version:</b> v0.0.5 Alpha")
         self.version_label.setContentsMargins(10, 10, 0, 0)
         self.info_layout.addWidget(self.version_label)
 

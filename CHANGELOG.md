@@ -8,4 +8,8 @@
 -   add new logo and new ico.
 -   fixed change and saved theme.
 
+#### ⟳ Changelog Alpha version 0.0.5 (2025-06-24)
+-   new notes section for writing with Markdown and being able to list and read them..
+-   switching from Mongo to Mongite, a local database similar to SQLite.
+-   some validations are added in TODO.
 
