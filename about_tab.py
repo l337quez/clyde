@@ -11,11 +11,12 @@ class AboutTab(QWidget):
 
         self.version_label = QLabel(
             "<b>GNU Mau</b> is a cross-platform program (GNU Linux, Windows) that helps us <br> " 
-            "organize tasks, credentials in projects. It is designed for backend and Devops developers.")
+            "organize tasks, credentials in projects. It is designed for backend and Devops developers."
+        )
         self.version_label.setContentsMargins(10, 10, 0, 0)
         self.info_layout.addWidget(self.version_label)
 
-        self.version_label = QLabel("<b>version:</b> v0.0.3 Alpha")
+        self.version_label = QLabel("<b>version:</b> v0.0.4 Alpha")
         self.version_label.setContentsMargins(10, 10, 0, 0)
         self.info_layout.addWidget(self.version_label)
 
@@ -45,5 +46,11 @@ class AboutTab(QWidget):
         self.project_description_label.setContentsMargins(10, 10, 0, 0)  
         self.info_layout.addWidget(self.project_description_label)
 
+        self.project_description_label = QLabel(
+            " <br> "
+            "Copyright © 2024 Ronal Forero. Licensed under GPLv3.")
+        self.project_description_label.setContentsMargins(10, 10, 0, 0)  
+        self.info_layout.addWidget(self.project_description_label)
+        
         self.info_layout.addStretch()
         self.setLayout(self.info_layout)

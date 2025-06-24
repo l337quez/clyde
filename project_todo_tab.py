@@ -1,170 +1,97 @@
-import sys
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QCheckBox, QScrollArea, QDialog, QDialogButtonBox)
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QPushButton, QScrollArea,
+    QLineEdit, QTextEdit, QDialog, QDialogButtonBox
+)
+from bson.objectid import ObjectId
+from todo_item_widget import TodoItemWidget
+
 
 class ProjectTodoTab(QWidget):
     def __init__(self, main_window, project_id):
         super().__init__()
         self.main_window = main_window
         self.project_id = project_id
+        self.todos_collection = self.main_window.db.todos
+
         self.layout = QVBoxLayout(self)
 
-        # Botón para añadir nueva tarea
-        self.add_button = QPushButton("Add")
-        self.add_button.clicked.connect(self.open_add_dialog)
-        self.layout.addWidget(self.add_button)
-
-        # Área de scroll para mostrar las tareas
+        # Scroll area for ToDo items
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.todo_list_widget = QWidget()
-        self.todo_list_layout = QVBoxLayout(self.todo_list_widget)
-        self.scroll_area.setWidget(self.todo_list_widget)
+
+        self.todos_container = QWidget()
+        self.todos_layout = QVBoxLayout(self.todos_container)
+        self.scroll_area.setWidget(self.todos_container)
         self.layout.addWidget(self.scroll_area)
 
-        self.setLayout(self.layout)
+        # Add new todo button
+        self.add_button = QPushButton("➕ New To-Do")
+        self.add_button.clicked.connect(self.show_add_todo_dialog)
+        self.layout.addWidget(self.add_button)
 
-        # Cargar tareas desde la base de datos
         self.load_todos()
 
     def load_todos(self):
-        todos_collection = self.main_window.db.todos
-        todos = todos_collection.find({"project_id": self.project_id})
+        # Clear old items
+        for i in reversed(range(self.todos_layout.count())):
+            self.todos_layout.itemAt(i).widget().setParent(None)
+
+        todos = self.todos_collection.find({"project_id": str(self.project_id)})
         for todo in todos:
-            title, description, tasks = todo['title'], todo['description'], todo['tasks']
-            self.add_todo_item(title, description, tasks, False)
+            widget = TodoItemWidget(
+                title=todo["title"],
+                description=todo["description"],
+                tasks=todo["tasks"],
+                on_delete=lambda w, _id=todo["_id"]: self.delete_todo(w, _id),
+                on_update=lambda w, _id=todo["_id"]: self.update_todo(w, _id)
+            )
+            self.todos_layout.addWidget(widget)
 
-    def update_project_id(self, project_id):
-        self.project_id = project_id
-        self.load_todos()
-
-    def add_todo_item(self, title, description, tasks, new):
-        todo_widget = QWidget()
-        todo_layout = QVBoxLayout()
-
-        title_label = QLabel(f"<b>{title}</b>")
-        description_label = QLabel(description)
-
-        title_layout = QHBoxLayout()
-        title_layout.addWidget(title_label)
-        check_button = QCheckBox()
-        title_layout.addWidget(check_button)
-        todo_layout.addLayout(title_layout)
-        todo_layout.addWidget(description_label)
-
-        tasks_layout = QVBoxLayout()
-        for task in tasks:
-            task_layout = QHBoxLayout()
-            task_check = QCheckBox(task['task'])
-            task_check.setChecked(task['checked'])
-            task_check.stateChanged.connect(self.update_task_state)
-            task_layout.addWidget(task_check)
-            tasks_layout.addLayout(task_layout)
-
-        todo_layout.addLayout(tasks_layout)
-        todo_widget.setLayout(todo_layout)
-        self.todo_list_layout.addWidget(todo_widget)
-
-        check_button.stateChanged.connect(lambda state, w=todo_widget: self.update_main_task_state(state, w, tasks_layout))
-
-        if new:
-            self.save_todo_to_db(title, description, tasks)
-
-    @Slot()
-    def open_add_dialog(self):
+    def show_add_todo_dialog(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Add Todo")
-        dialog_layout = QVBoxLayout(dialog)
+        dialog.setWindowTitle("New To-Do")
+        layout = QVBoxLayout(dialog)
 
         title_input = QLineEdit()
         title_input.setPlaceholderText("Title")
+        layout.addWidget(title_input)
+
         description_input = QTextEdit()
-        description_input.setPlaceholderText("Description")
-        task_input = QLineEdit()
-        task_input.setPlaceholderText("Task (comma separated)")
+        description_input.setPlaceholderText("Description (optional)")
+        layout.addWidget(description_input)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(lambda: self.add_todo_from_dialog(dialog, title_input, description_input, task_input))
-        button_box.rejected.connect(dialog.reject)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
 
-        dialog_layout.addWidget(title_input)
-        dialog_layout.addWidget(description_input)
-        dialog_layout.addWidget(task_input)
-        dialog_layout.addWidget(button_box)
+        buttons.accepted.connect(lambda: self.create_todo(dialog, title_input.text(), description_input.toPlainText()))
+        buttons.rejected.connect(dialog.reject)
 
-        dialog.setLayout(dialog_layout)
         dialog.exec()
 
-    def add_todo_from_dialog(self, dialog, title_input, description_input, task_input):
-        title = title_input.text()
-        description = description_input.toPlainText()
-        tasks = [{'task': task.strip(), 'checked': False} for task in task_input.text().split(',')]
-
-        self.add_todo_item(title, description, tasks, True)
+    def create_todo(self, dialog, title, description):
+        if not title.strip():
+            return
+        new_todo = {
+            "title": title.strip(),
+            "description": description.strip(),
+            "tasks": [],
+            "project_id": str(self.project_id),
+        }
+        self.todos_collection.insert_one(new_todo)
         dialog.accept()
+        self.load_todos()
 
-    def save_todo_to_db(self, title, description, tasks):
-        todos_collection = self.main_window.db.todos
-        todos_collection.insert_one({
-            "title": title,
-            "description": description,
-            "tasks": tasks,
-            "project_id": self.project_id
-        })
+    def delete_todo(self, widget, todo_id):
+        self.todos_collection.delete_one({"_id": ObjectId(todo_id)})
+        widget.setParent(None)
 
-    @Slot()
-    def update_task_state(self, state):
-        parent_widget = self.sender().parentWidget().parentWidget()
-        for i in range(parent_widget.layout().count()):
-            task_layout = parent_widget.layout().itemAt(i).layout()
-            for j in range(task_layout.count()):
-                task_check = task_layout.itemAt(j).widget()
-                if isinstance(task_check, QCheckBox):
-                    if not task_check.isChecked():
-                        parent_widget.parentWidget().layout().itemAt(1).widget().setChecked(False)
-                        return
-        parent_widget.parentWidget().layout().itemAt(1).widget().setChecked(True)
-
-    @Slot()
-    def update_main_task_state(self, state, widget, tasks_layout):
-        if state == Qt.Checked:
-            for i in range(tasks_layout.count()):
-                task_layout = tasks_layout.itemAt(i).layout()
-                for j in range(task_layout.count()):
-                    task_check = task_layout.itemAt(j).widget()
-                    if isinstance(task_check, QCheckBox):
-                        task_check.setChecked(True)
-        else:
-            for i in range(tasks_layout.count()):
-                task_layout = tasks_layout.itemAt(i).layout()
-                for j in range(task_layout.count()):
-                    task_check = task_layout.itemAt(j).widget()
-                    if isinstance(task_check, QCheckBox):
-                        task_check.setChecked(False)
-        self.save_all_todos_to_db()
-
-    def save_all_todos_to_db(self):
-        todos = []
-        for i in range(self.todo_list_layout.count()):
-            widget = self.todo_list_layout.itemAt(i).widget()
-            title = widget.layout().itemAt(0).layout().itemAt(0).widget().text()
-            description = widget.layout().itemAt(1).widget().text()
-            tasks = []
-            tasks_layout = widget.layout().itemAt(2)
-            for j in range(tasks_layout.count()):
-                task_layout = tasks_layout.itemAt(j).layout()
-                for k in range(task_layout.count()):
-                    task_check = task_layout.itemAt(k).widget()
-                    if isinstance(task_check, QCheckBox):
-                        tasks.append({'task': task_check.text(), 'checked': task_check.isChecked()})
-            todos.append((title, description, tasks))
-        
-        todos_collection = self.main_window.db.todos
-        todos_collection.delete_many({"project_id": self.project_id})
-        for todo in todos:
-            todos_collection.insert_one({
-                "title": todo[0],
-                "description": todo[1],
-                "tasks": todo[2],
-                "project_id": self.project_id
-            })
+    def update_todo(self, widget, todo_id):
+        data = widget.get_data()
+        self.todos_collection.update_one(
+            {"_id": ObjectId(todo_id)},
+            {"$set": {
+                "title": data["title"],
+                "description": data["description"],
+                "tasks": data["tasks"]
+            }}
+        )

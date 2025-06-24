@@ -54,21 +54,45 @@ class SettingTab(QWidget):
 
         # Cargar el tema desde el archivo de configuración
         config = self.load_config()
-        if config.get("theme") == "dark":
-            self.dark_mode = True
-            self.toggle_theme()
+        self.dark_mode = config.get("dark_mode", False)
+
+        # Aplicar el estado correcto directamente (sin activar toggle_theme)
+        if self.dark_mode:
+            qss_file = self.get_qss_path()
+            with open(qss_file, "r") as file:
+                self.main_window.setStyleSheet(file.read())
+            self.theme_label.setText("Dark Theme")
         else:
-            self.dark_mode = False
+            self.main_window.setStyleSheet("")
+            self.theme_label.setText("Light Theme")
+
+
 
     def get_config_path(self):
         config_dir = os.path.join(os.path.expanduser("~"), ".myapp")
         os.makedirs(config_dir, exist_ok=True)
         return os.path.join(config_dir, "config.json")
 
-    def save_config(self, config_data):
+    # def save_config(self, config_data):
+    #     config_path = self.get_config_path()
+    #     with open(config_path, "w") as config_file:
+    #         json.dump(config_data, config_file)
+
+    def save_config(self, updated_data):
         config_path = self.get_config_path()
-        with open(config_path, "w") as config_file:
-            json.dump(config_data, config_file)
+        config = {}
+
+        # Cargar config existente si existe
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                config = json.load(f)
+
+        # Actualizar solo los campos necesarios
+        config.update(updated_data)
+
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=4)
+
 
     def load_config(self):
         config_path = self.get_config_path()
@@ -86,23 +110,44 @@ class SettingTab(QWidget):
             base_path = os.path.dirname(__file__)
         return os.path.join(base_path, "dark_theme.qss")
 
+    # @Slot()
+    # def toggle_theme(self):
+    #     if self.dark_mode:
+    #         # Cambiar a tema claro
+    #         self.main_window.setStyleSheet("")
+    #         self.theme_label.setText("Light Theme")
+    #         config = {"theme": "light"}
+    #     else:
+    #         # Cambiar a tema oscuro
+    #         qss_file = self.get_qss_path()
+    #         with open(qss_file, "r") as file:
+    #             self.main_window.setStyleSheet(file.read())
+    #         self.theme_label.setText("Dark Theme")
+    #         config = {"theme": "dark"}
+
+    #     self.save_config(config)
+    #     self.dark_mode = not self.dark_mode
+
     @Slot()
     def toggle_theme(self):
+        config_update = {}
+
         if self.dark_mode:
             # Cambiar a tema claro
             self.main_window.setStyleSheet("")
             self.theme_label.setText("Light Theme")
-            config = {"theme": "light"}
+            config_update = {"dark_mode": False}
         else:
             # Cambiar a tema oscuro
             qss_file = self.get_qss_path()
             with open(qss_file, "r") as file:
                 self.main_window.setStyleSheet(file.read())
             self.theme_label.setText("Dark Theme")
-            config = {"theme": "dark"}
+            config_update = {"dark_mode": True}
 
-        self.save_config(config)
+        self.save_config(config_update)
         self.dark_mode = not self.dark_mode
+
 
     @Slot()
     def backup_db(self):
